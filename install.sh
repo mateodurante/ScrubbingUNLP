@@ -20,6 +20,7 @@ sudo pip3 install -r /opt/ScrubbingUNLP/requirements.txt
 
 echo "Moviendo scripts de Python a /opt/exabgp/scripts/"
 [[ -d /opt/exabgp/scripts/ ]] || mkdir /opt/exabgp/scripts/
+
 cp /opt/ScrubbingUNLP/scripts/*.py /opt/exabgp/scripts/
 
 echo "Aplicando permisos de ejecución a los scripts de ExaBGP"
