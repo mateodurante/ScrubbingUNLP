@@ -16,7 +16,7 @@ echo "Instalando ExaBGP"
 sudo python3 -m zipapp -o /usr/local/sbin/exabgp -m exabgp.application:main  -p "/usr/bin/env python3" lib
 
 echo "Instalando modulos de python para los scripts de ExaBGP"
-sudo pip3 install -r requirements.txt
+sudo pip3 install -r /opt/ScrubbingUNLP/requirements.txt
 
 echo "Aplicando permisos de ejecución a los scripts de ExaBGP"
 chmod +x /opt/ScrubbingUNLP/start.sh
