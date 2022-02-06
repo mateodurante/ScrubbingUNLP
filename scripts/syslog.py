@@ -2,17 +2,14 @@
 import json
 import os
 from sys import stdin, stdout
-# from pymongo import MongoClient
 import datetime
 import logging
+import socket
 
-logging.basicConfig(filename='/var/log/received_exabgp.log', level=logging.INFO)
+hostname = socket.gethostname()
+
+logging.basicConfig(filename=f'/var/log/received_exabgp_{hostname}.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ###  DB Setup ###
-# client = MongoClient('10.0.4.2', 27017)
-# db = client.exabgp_db
-# updates = db.bgp_updates
 
 counter = 0
 while True:

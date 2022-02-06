@@ -1,28 +1,21 @@
 #!/usr/bin/env python
 import os
 import sys
+import time
 import json
 import copy
 import pprint
 import logging
+import multiprocessing
 from subprocess import Popen, PIPE
+from io import StringIO
 import struct
+import uuid
+import socket
 
+hostname = socket.gethostname()
 
-NETWORKS = {
-	"33"  : "172.16.1.0/24",	# Scrubbing 1
-	"5692" : "172.16.3.0/24",	# UNLP
-	"52376"  : "172.16.1.0/24",	# Scrubbing 2 (CABASE)
-}
-
-MY_GRE_IP = "172.16.1.1"
-
-# apt-get install -y python-redis python-pip
-# pip install rq
-
-exabgp_log = open("/tmp/exabgp.log", "a")
-
-logging.basicConfig(filename='/tmp/firewall_queue_worker.log', level=logging.INFO)
+logging.basicConfig(filename=f'/var/log/firewall_{hostname}.log', level=logging.INFO)
 #logging.basicConfig(filename='/var/log/firewall_queue_worker.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -140,7 +133,7 @@ class Iptables(AbstractFirewall):
 
         # We could specify only range here, list is not allowed
         if 'packet-length' in pyflow_rule:
-            iptables_arguments.extend(['-m', 'length', '--length', pyflow_rule[packet-length]])
+            iptables_arguments.extend(['-m', 'length', '--length', pyflow_rule['packet-length']])
 
         if pyflow_rule['action'] == 'rate-limit':
             rule_name = pyflow_rule['source_host']+pyflow_rule['target_host']+\
@@ -170,10 +163,10 @@ def execute_command_with_shell(command_name, arguments):
     if arguments != None:
         args.extend( arguments )
 
-    Popen( args );
+    Popen( args )
 
 
-firewall = None;
+firewall = None
 
 if (firewall_backend == 'netmap-ipfw'):
     firewall = Ipfw()
@@ -279,29 +272,6 @@ def convert_exabgp_to_pyflow(flow, flow_body):
     return pyflow_list
 
 
-# Funcion para crear el tunel GRE en Scrubbing (por alguna razon, no funciona correctamente en un archivo separado)
-def create_gre(line):
-    json_line = json.loads(line)
-    try:
-        if json_line["type"] == "update":
-            neighbor = json_line["neighbor"]
-            remote = neighbor["address"]["peer"]
-            local = neighbor["address"]["local"]
-            asn_remote = neighbor["asn"]["peer"]
-            if "announce" in neighbor["message"]["update"].keys() and neighbor["direction"] == "receive":
-                if "ipv4 unicast" in neighbor["message"]["update"]["announce"].keys():
-                    command = """
-ip tunnel add {2} mode gre remote {0} local {1} ttl 255
-ip link set {2} up
-ip addr add {3} dev {2}
-ip route add {4} dev {2}
-"""
-                    os.system(command.format(remote, local, asn_remote, MY_GRE_IP, NETWORKS[asn_remote]))
-                    return True
-    except KeyError:
-        pass
-    return None
-
 while True:
     try:
         line = sys.stdin.readline().strip()
@@ -320,9 +290,6 @@ while True:
 
 # Peer shutdown notification:
 # { "exabgp": "3.5.0", "time": 1431900440, "host" : "filter.fv.ee", "pid" : 8637, "ppid" : 8435, "counter": 21, "type": "state", "neighbor": { "address": { "local": "10.0.3.115", "peer": "10.0.3.114" }, "asn": { "local": "1234", "peer": "65001" }, "state": "down", "reason": "in loop, peer reset, message [closing connection] error[the TCP connection was closed by the remote end]" } }
-
-        # Llamado a crear GRE tunnel, se verifica dentro de la funcion el tipo de mensaje recibido:
-        #create_gre(line)
 
         # Fix bug: https://github.com/Exa-Networks/exabgp/issues/269
         line = line.replace('0x800900000000000A', '"0x800900000000000A"')
@@ -367,7 +334,8 @@ while True:
                 print ("We received notification about peer down for: " + peer_ip, file=sys.stderr)
                 manage_flow('withdrawal', peer_ip, None, None, firewall)
 
-        exabgp_log.write(line + "\n")
+        # exabgp_log.write(line + "\n")
+        logger.info(line)
     except KeyboardInterrupt:
         pass
     except IOError:
