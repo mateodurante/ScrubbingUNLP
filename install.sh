@@ -14,3 +14,6 @@ sudo git checkout 4.2.11
 
 echo "Instalando ExaBGP"
 sudo python3 -m zipapp -o /usr/local/sbin/exabgp -m exabgp.application:main  -p "/usr/bin/env python3" lib
+
+
+chmod +x /opt/ScrubbingUNLP/start.sh
