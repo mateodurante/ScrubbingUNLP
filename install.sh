@@ -4,7 +4,7 @@
 
 if [[ -d /opt/exabgp/ ]]; then
     echo "Ya existe una instalación de ExaBGP en /opt/exabgp, borrando..."
-    rm -rf /opt/exabgp/
+    sudo rm -rf /opt/exabgp/
 fi
 
 echo "Descargando ExaBGP en /opt/exabgp"
@@ -17,6 +17,9 @@ sudo python3 -m zipapp -o /usr/local/sbin/exabgp -m exabgp.application:main  -p 
 
 echo "Instalando modulos de python para los scripts de ExaBGP"
 sudo pip3 install -r /opt/ScrubbingUNLP/requirements.txt
+
+echo "Moviendo scripts de Python a /opt/exabgp/scripts/"
+cp /opt/ScrubbingUNLP/scripts/*.py /opt/exabgp/scripts/
 
 echo "Aplicando permisos de ejecución a los scripts de ExaBGP"
 chmod +x /opt/ScrubbingUNLP/start.sh
