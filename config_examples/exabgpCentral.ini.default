@@ -1,0 +1,48 @@
+# Control pipe
+process httpAPI {
+   run /usr/bin/python3 /opt/exabgp/scripts/http_api.py;
+   encoder json;
+}
+
+# IPv4 template
+template {
+  neighbor central {
+	local-as <ASN>;
+	hold-time 180;
+	group-updates false;
+
+	capability {
+		graceful-restart 120;
+	}
+	family {
+		ipv4 unicast;
+		ipv4 flow;
+	}
+	api {
+		processes [ httpAPI ];
+		neighbor-changes;
+  	}
+  }
+}
+
+# Neighbours
+# Scrubbing1
+neighbor <IP-Scrubbing1> {
+  inherit central;
+  peer-as <ASN-Scrubbing1>;
+  local-address <IP-Central>;
+	router-id <IP-Central>;
+  description "ExaBGP Scrubbing Center 1";
+}
+
+# Scrubbing2
+neighbor <IP-Scrubbing2> {
+  inherit central;
+  peer-as <ASN-Scrubbing2>;
+  local-address <IP-Central>;
+	router-id <IP-Central>;
+  description "ExaBGP Scrubbing Center 2";
+}
+
+# ScrubbingN
+# ...

@@ -1,0 +1,89 @@
+process receive-routes-central {
+  run /usr/bin/python3 /opt/exabgp/scripts/syslog.py;
+  run /usr/bin/python3 /opt/exabgp/scripts/acl.py;
+  encoder json;
+}
+
+process parse-routes-central {
+  run /usr/bin/python3 /opt/exabgp/scripts/parseroute.py;
+  encoder json;
+}
+
+process httpAPI {
+   run /usr/bin/python3 /opt/exabgp/scripts/http_api.py;
+   encoder json;
+}
+
+# IPv4 template
+template {
+  neighbor scrubbing {
+    local-as <ASN-Scrubbing1>;
+    hold-time 180;
+    group-updates false;
+    capability {
+      graceful-restart 120;
+    }
+    family {
+      ipv4 unicast;
+      ipv4 flow;
+    }
+  }
+}
+
+template {
+  neighbor ISPBGPPeer {
+    local-as <ASN-Scrubbing1>;
+    peer-as <ASN-Scrubbing1>;
+    hold-time 180;
+    group-updates false;
+    capability {
+      graceful-restart 120;
+    }
+    family {
+      ipv4 unicast;
+      ipv4 flow;
+    }
+    api{
+    processes [ httpAPI ];
+    neighbor-changes;
+    }
+  }
+}
+
+
+# ExaBGP peering to Central ExaBGP
+neighbor 163.20.252.2 {
+  inherit scrubbing;
+  peer-as 5692;
+  router-id <IP-Scrubbing1>;
+  local-address <IP-Scrubbing1>;
+  description "ExaBGP to ExaBGPCentral";
+  api {
+    processes [ parse-routes-central ];
+    neighbor-changes;
+    receive {
+      update;
+    }
+  }
+  api {
+    processes [ receive-routes-central ];
+    neighbor-changes;
+    receive {
+      parsed;
+      update;
+      keepalive;
+      operational;
+      packets;
+      open; 
+      consolidate;
+      refresh;
+    }
+  }
+}
+
+neighbor <IP-PeeringInternetISPScrubbing1> {
+  inherit ISPBGPPeer;
+  router-id <IP-Scrubbing1>;
+  local-address <IP-Scrubbing1>;
+  description "Peering ISP router to announce";
+}
