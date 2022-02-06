@@ -62,4 +62,4 @@ echo "Ejecutando ExaBGP"
 
 mkfifo /run/exabgp.{in,out}; chmod 777 /run/exabgp.{in,out}
 
-bash -E -c "env exabgp.daemon.daemonize=false exabgp.tcp.bind=$BINDIP exabgp.daemon.user=root /opt/exabgp/sbin/exabgp $CONFIGFILE" &
+env exabgp.daemon.daemonize=false exabgp.tcp.bind=$BINDIP exabgp.daemon.user=root /opt/exabgp/sbin/exabgp $CONFIGFILE
