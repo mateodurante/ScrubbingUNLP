@@ -4,6 +4,12 @@ process httpAPI {
    encoder json;
 }
 
+# Changes on the neighbor states
+process processNeighborChanges {
+   run /usr/bin/python3 /opt/exabgp/scripts/webscrubstates.py;
+   encoder json;
+}
+
 # IPv4 template
 template {
   neighbor central {
@@ -22,6 +28,20 @@ template {
 		processes [ httpAPI ];
 		neighbor-changes;
   	}
+    api {
+      processes [ processNeighborChanges ];
+      neighbor-changes;
+      receive {
+        parsed;
+        update;
+        keepalive;
+        operational;
+        packets;
+        open;
+        consolidate;
+        refresh;
+      }
+    }
   }
 }
 

@@ -43,9 +43,9 @@ template {
       ipv4 unicast;
       ipv4 flow;
     }
-    api{
-    processes [ httpAPI ];
-    neighbor-changes;
+    api {
+      processes [ httpAPI ];
+      neighbor-changes;
     }
   }
 }
