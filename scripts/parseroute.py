@@ -7,6 +7,7 @@ import requests
 import logging
 import socket
 import subprocess
+import time
 
 hostname = socket.gethostname()
 
@@ -16,17 +17,35 @@ logger = logging.getLogger(__name__)
 counter = 0
 peer = {}
 red = {}
+webscrub_url = ""
+
+while not webscrub_url:
+    # TODO: ver como configuramos esto...
+    try:
+        with open('/etc/webscrub.txt') as f:
+            webscrub_url = f.read().strip()
+    except:
+        pass
+
+    # esperamos a tener la url del webscrub
+    time.sleep(1)
 
 def existe_tunel(asn_remote):
-    s = subprocess.run(['ip','link','ls', str(asn_remote)], stdout=subprocess.PIPE)
+    cmd = ['ip','link','ls', str(asn_remote)]
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
     return s.returncode == 0
 
 def existe_rutas(asn_remote):
-    s = subprocess.run(['ip','route','ls','dev',str(asn_remote)], stdout=subprocess.PIPE)
+    cmd = ['ip','route','ls','dev',str(asn_remote)]
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
     return s.stdout.decode('utf-8') != ''
 
 def extraer_asn_de_ruta(net):
-    s = subprocess.run(['ip','route','ls',str(net)], stdout=subprocess.PIPE)
+    cmd = ['ip','route','ls',str(net)]
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
     if s.returncode == 0:
         try:
             return s.stdout.decode('utf-8').split('\n')[0].split(' ')[2]
@@ -34,19 +53,26 @@ def extraer_asn_de_ruta(net):
             return None
 
 
-def create_gre(peer, local, asn_remote):
+def create_gre(local, asn_remote):
     # checkear si existe el tunel
     if not existe_tunel(asn_remote):
         # si no existe, crearlo
-        s = subprocess.run(['ip','tunnel','add',str(asn_remote),'mode','gre','remote',str(peer),'local',str(local),'ttl','255'], stdout=subprocess.PIPE)
-    s = subprocess.run(['ip','link','set',str(asn_remote),'up'], stdout=subprocess.PIPE)
+        peer = get_tunnel_ip(asn_remote)
+        cmd = ['ip','tunnel','add',str(asn_remote),'mode','gre','remote',str(peer),'local',str(local),'ttl','255']
+        logger.info(' '.join(cmd))
+        s = subprocess.run(cmd, stdout=subprocess.PIPE)
+    cmd = ['ip','link','set',str(asn_remote),'up']
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
     return s.returncode
 
 def remove_gre(asn_remote):
     # checkear si existe el tunel y no tiene rutas
     if existe_tunel(asn_remote) and not existe_rutas(asn_remote):
         # eliminarlo
-        s = subprocess.run(['ip','tunnel','del',str(asn_remote)], stdout=subprocess.PIPE)
+        cmd = ['ip','tunnel','del',str(asn_remote)]
+        logger.info(' '.join(cmd))
+        s = subprocess.run(cmd, stdout=subprocess.PIPE)
 
 def aplicar_ruta(value, action, net, asn_remote):
     # Pagina para la sintaxis: https://thepacketgeek.com/advanced-router-peering-and-route-announcement/
@@ -62,7 +88,9 @@ def aplicar_ruta(value, action, net, asn_remote):
 
 def remove_orphan_gre():
     # eliminar tuneles sin rutas
-    s = subprocess.run(['ip','tunnel','ls'], stdout=subprocess.PIPE)
+    cmd = ['ip','tunnel','ls']
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
     if s.returncode == 0:
         for line in s.stdout.decode('utf-8').split('\n'):
             try:
@@ -71,6 +99,17 @@ def remove_orphan_gre():
                     remove_gre(asn)
             except:
                 continue
+
+def get_tunnel_ip(asn_remote):
+    global webscrub_url
+    # test if url is reachable
+    try:
+        response = requests.get(f'{webscrub_url}asn/getgreip/{asn_remote}')
+        logger.info(f'{response.status_code} - {response.reason} - {response.text}')
+        return response.json()['gre_ip']
+    except:
+        logger.error('No se pudo conectar la terminacion del tunel gre en el WebScrub')
+
 
 while True:
 
@@ -98,7 +137,7 @@ while True:
                 message_type = "announce"
                 action = "add"
                 asn_remote = update['attribute']['as-path'][0]
-                create_gre(peer, local, asn_remote)
+                create_gre(local, asn_remote)
                 value = f"announce route {net} next-hop self origin igp as-path [{asn_remote}]"
                 aplicar_ruta(value, action, net, asn_remote)
             elif 'withdraw' in update.keys():

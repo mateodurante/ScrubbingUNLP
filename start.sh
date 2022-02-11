@@ -13,6 +13,11 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -w|--webscrub-url)
+      WEBSCRUBURL="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -28,12 +33,17 @@ set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
 
 [ -z ${BINDIP} ] && echo "Se necesita el parametro BINDIP" && exit 1
 [ -z ${CONFIGFILE} ] && echo "Se necesita el parametro CONFIGFILE" && exit 1
+[ -z ${WEBSCRUBURL} ] && echo "Se necesita el parametro WEBSCRUBURL" && exit 1
+
+# Agregamos la barra final si no la tiene
+WEBSCRUBURL=$(sed 's![^/]$!&/!' <<< ${WEBSCRUBURL})
 
 echo "BINDIP     = ${BINDIP}"
 echo "CONFIGFILE = ${CONFIGFILE}"
-
+echo "WEBSCRUBURL = ${WEBSCRUBURL}"
 
 # exit 0
+
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -53,6 +63,10 @@ echo "Script para simplificarnos la vida, chabón."
 echo "Moviendo scripts de Python a /opt/exabgp/scripts/"
 
 cp $SCRIPT_DIR/scripts/* /opt/exabgp/scripts/
+
+echo "Creando archivo con API al webscrub"
+# TODO: Mejorar el archivo de configuracion
+echo ${WEBSCRUBURL} > "/etc/webscrub.txt"
 
 echo "Habilitando forwarding IPv4."
 

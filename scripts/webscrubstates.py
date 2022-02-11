@@ -38,14 +38,17 @@ while True:
         logger.error('No se pudo conectar con el WebScrub, reintentando en 5 segundos')
         time.sleep(5)
 
-logger.info('URL recibida: ' + webscrub_url)
+logger.info('URL funciona: ' + webscrub_url)
 
 def get_if_exists(d, key_list):
     try:
         if len(key_list) == 0:
             return d
         else:
-            return get_if_exists(d[key_list[0]], key_list[1:])
+            if type(d) == list and type(key_list) == int:
+                return get_if_exists(d[key_list], key_list[1:])
+            else:
+                return get_if_exists(d[key_list[0]], key_list[1:])
     except:
         return ''
 
@@ -59,14 +62,21 @@ while True:
         continue
     counter = 0
 
+    logger.warn('Recibido: ' + line)
     message = json.loads(line)
 
     try:
+        related_asn = get_if_exists(message, ['neighbor', 'message', 'update', 'attribute', 'as-path'])
+        if related_asn:
+            related_asn = related_asn[0]
+        related_network = get_if_exists(message,['neighbor', 'message', 'update', 'announce', 'ipv4 unicast', message['neighbor']['address']['peer'], 0, 'nlri'])
         msg = {
             'host': message['host'],
             'time': message['time'],
             'counter': message['counter'],
             'type': message['type'],
+            'related_asn': related_asn,
+            'related_network': related_network,
             'neighbor': { 
                 'address': { 
                     'local': message['neighbor']['address']['local'], 
@@ -77,11 +87,12 @@ while True:
                     'peer': message['neighbor']['asn']['peer']
                 }, 
                 'direction': get_if_exists(message, ['neighbor', 'direction']),
+                'state': get_if_exists(message, ['neighbor', 'state']),
                 'state': get_if_exists(message, ['neighbor', 'state'])
             },
             'raw': base64.b64encode(line.encode('utf-8')).decode('utf-8')
         }
-        requests.post(webscrub_url, json=msg)
+        requests.post(f"{webscrub_url}peermessage/add", json=msg)
         logger.info(msg)
 
     except KeyError as detail:

@@ -2,6 +2,7 @@ from flask import Flask, request
 from sys import stdout
 import logging
 import socket
+import subprocess
 
 hostname = socket.gethostname()
 
@@ -14,11 +15,19 @@ app = Flask(__name__)
 # Setup a command route to listen for prefix advertisements
 @app.route('/', methods=['POST'])
 def command():
-	command = request.form['command']
-	logger.info(command)
-	stdout.write('%s\n' % command)
-	stdout.flush()
-	return '%s\n' % command
+    command = request.form['command']
+    logger.info(command)
+    stdout.write('%s\n' % command)
+    stdout.flush()
+    return '%s\n' % command
+
+# Run BGP commands
+@app.route('/exabgpcli', methods=['POST'])
+def exabgpcli():
+    command = request.form['command']
+    p = subprocess.Popen(['/opt/exabgp/bin/exabgpcli']+command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    return {'stdout': stdout.decode('utf-8'), 'stderr': stderr.decode('utf-8'), 'returncode': p.returncode}
 
 if __name__ == '__main__':
-	app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0")
