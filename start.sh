@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
       shift # past value
       ;;
     -f|--fprobe)
-      FPROBEIP="$3"
+      FPROBEIP="$2"
       shift # past argument
       shift # past value
       ;;
