@@ -1,4 +1,4 @@
-# ScrubingUNLP
+# ScrubbingUNLP
 
 ## Qué es?
 

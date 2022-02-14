@@ -9,9 +9,11 @@ import base64
 
 hostname = socket.gethostname()
 
-logging.basicConfig(filename=f'/var/log/webscrubstates_{hostname}.log', level=logging.INFO)
+logging.basicConfig(filename=f'/var/log/webscrubmessages_{hostname}.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+##### WEBSCRUB URL #####
 webscrub_url = None
 
 logger.info('Intentando levantar config URL API del WebScrub')
@@ -39,6 +41,7 @@ while True:
         time.sleep(5)
 
 logger.info('URL funciona: ' + webscrub_url)
+##### END WEBSCRUB URL #####
 
 def get_if_exists(d, key_list):
     try:
@@ -62,7 +65,7 @@ while True:
         continue
     counter = 0
 
-    logger.warn('Recibido: ' + line)
+    logger.warning('Recibido: ' + line)
     message = json.loads(line)
 
     try:

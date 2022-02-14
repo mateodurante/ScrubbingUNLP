@@ -17,7 +17,11 @@ logger = logging.getLogger(__name__)
 counter = 0
 peer = {}
 red = {}
-webscrub_url = ""
+
+##### WEBSCRUB URL #####
+webscrub_url = None
+
+logger.info('Intentando levantar config URL API del WebScrub')
 
 while not webscrub_url:
     # TODO: ver como configuramos esto...
@@ -29,6 +33,21 @@ while not webscrub_url:
 
     # esperamos a tener la url del webscrub
     time.sleep(1)
+
+logger.info('URL recibida: ' + webscrub_url)
+
+while True:
+    # test if url is reachable
+    try:
+        response = requests.get(webscrub_url)
+        break
+    except:
+        logger.error('No se pudo conectar con el WebScrub, reintentando en 5 segundos')
+        time.sleep(5)
+
+logger.info('URL funciona: ' + webscrub_url)
+##### END WEBSCRUB URL #####
+
 
 def existe_tunel(asn_remote):
     cmd = ['ip','link','ls', str(asn_remote)]
@@ -53,7 +72,7 @@ def extraer_asn_de_ruta(net):
             return None
 
 
-def create_gre(local, asn_remote):
+def create_or_up_gre(local, asn_remote):
     # checkear si existe el tunel
     if not existe_tunel(asn_remote):
         # si no existe, crearlo
@@ -71,6 +90,14 @@ def remove_gre(asn_remote):
     if existe_tunel(asn_remote) and not existe_rutas(asn_remote):
         # eliminarlo
         cmd = ['ip','tunnel','del',str(asn_remote)]
+        logger.info(' '.join(cmd))
+        s = subprocess.run(cmd, stdout=subprocess.PIPE)
+
+def down_gre(asn_remote):
+    # checkear si existe el tunel y no tiene rutas
+    if existe_tunel(asn_remote) and not existe_rutas(asn_remote):
+        # bajarlo
+        cmd = ['ip','link',str(asn_remote),'down']
         logger.info(' '.join(cmd))
         s = subprocess.run(cmd, stdout=subprocess.PIPE)
 
@@ -137,7 +164,7 @@ while True:
                 message_type = "announce"
                 action = "add"
                 asn_remote = update['attribute']['as-path'][0]
-                create_gre(local, asn_remote)
+                create_or_up_gre(local, asn_remote)
                 value = f"announce route {net} next-hop self origin igp as-path [{asn_remote}]"
                 aplicar_ruta(value, action, net, asn_remote)
             elif 'withdraw' in update.keys():
@@ -149,8 +176,8 @@ while True:
                 value = f"withdraw route {net}"
                 aplicar_ruta(value, action, net, asn_remote)
                 if asn_remote:
-                    remove_gre(asn_remote)
-                remove_orphan_gre()
+                    down_gre(asn_remote)
+                # remove_orphan_gre()
 
             
 
