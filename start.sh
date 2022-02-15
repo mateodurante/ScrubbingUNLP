@@ -46,7 +46,7 @@ WEBSCRUBURL=$(sed 's![^/]$!&/!' <<< ${WEBSCRUBURL})
 echo "BINDIP     = ${BINDIP}"
 echo "CONFIGFILE = ${CONFIGFILE}"
 echo "WEBSCRUBURL = ${WEBSCRUBURL}"
-[ ! -z ${FPROBEIP} ] && echo "FPROBEIP = ${FPROBEIP}"
+echo "FPROBEIP = ${FPROBEIP}"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
