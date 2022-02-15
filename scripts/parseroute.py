@@ -85,9 +85,9 @@ def create_or_up_gre(local, asn_remote):
     s = subprocess.run(cmd, stdout=subprocess.PIPE)
     return s.returncode
 
-def remove_gre(asn_remote):
+def remove_gre(asn_remote, force=False):
     # checkear si existe el tunel y no tiene rutas
-    if existe_tunel(asn_remote) and not existe_rutas(asn_remote):
+    if force or (existe_tunel(asn_remote) and not existe_rutas(asn_remote)):
         # eliminarlo
         cmd = ['ip','tunnel','del',str(asn_remote)]
         logger.info(' '.join(cmd))
@@ -97,14 +97,17 @@ def down_gre(asn_remote):
     # checkear si existe el tunel y no tiene rutas
     if existe_tunel(asn_remote) and not existe_rutas(asn_remote):
         # bajarlo
-        cmd = ['ip','link',str(asn_remote),'down']
+        cmd = ['ip','link','set',str(asn_remote),'down']
         logger.info(' '.join(cmd))
         s = subprocess.run(cmd, stdout=subprocess.PIPE)
 
-def aplicar_ruta(value, action, net, asn_remote):
+def send_cmd(cmd):
     # Pagina para la sintaxis: https://thepacketgeek.com/advanced-router-peering-and-route-announcement/
     # Announce received ExaBGP-route trough Quagga peering
-    post = requests.post('http://localhost:5000/', data = {'command' : value})
+    return requests.post('http://localhost:5000/', data = {'command' : cmd})
+
+def aplicar_ruta(value, action, net, asn_remote):
+    send_cmd(value)
     # Apply local route to the remote AS
     if asn_remote:
         cmd = f"ip route {action} {net} dev {asn_remote}"
@@ -137,6 +140,22 @@ def get_tunnel_ip(asn_remote):
     except:
         logger.error('No se pudo conectar la terminacion del tunel gre en el WebScrub')
 
+def get_tunnels():
+    # obtener todos los tuneles que son ASNs
+    cmd = ['ip','tunnel','ls']
+    logger.info(' '.join(cmd))
+    s = subprocess.run(cmd, stdout=subprocess.PIPE)
+    asns = []
+    if s.returncode == 0:
+        for line in s.stdout.decode('utf-8').split('\n'):
+            try:
+                asn = int(line.split(':')[0])
+                asns.append(asn)
+            except:
+                continue
+    return asns
+
+rutas_aplicadas = set()
 
 while True:
 
@@ -152,7 +171,17 @@ while True:
 
     message = json.loads(line)
 
-    if message["type"] == "update":
+    if message["type"] == "state":
+        if message['neighbor']['state'] in ["down", "connected"]:
+            logger.warning(f"Peer {message['neighbor']['state']}. Limpiando rutas")
+            send_cmd('clear adj-rib')
+            tuneles = get_tunnels()
+            logger.info(f'Eliminando tuneles: {tuneles}')
+            for tun in tuneles:
+                logger.info(f'Eliminando tunel {tun}')
+                remove_gre(tun, force=True)
+
+    elif message["type"] == "update":
         try:
             neighbor = message['neighbor']
             update = neighbor['message']['update']
