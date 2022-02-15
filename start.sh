@@ -46,7 +46,7 @@ WEBSCRUBURL=$(sed 's![^/]$!&/!' <<< ${WEBSCRUBURL})
 echo "BINDIP     = ${BINDIP}"
 echo "CONFIGFILE = ${CONFIGFILE}"
 echo "WEBSCRUBURL = ${WEBSCRUBURL}"
-[ -z ${FPROBEIP} ] && echo "FPROBEIP = ${WEBSCRUBURL}"
+[ ! -z ${FPROBEIP} ] && echo "FPROBEIP = ${WEBSCRUBURL}"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -75,7 +75,7 @@ echo "Habilitando forwarding IPv4."
 
 sysctl -w net.ipv4.ip_forward=1
 
-if [ -z ${FPROBEIP} ];
+if [ ! -z ${FPROBEIP} ];
 then
   echo "Ejecutando fprobe"
   /usr/sbin/fprobe -i eth0 ${FPROBEIP}
