@@ -18,6 +18,11 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -f|--fprobe)
+      FPROBEIP="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -*|--*)
       echo "Unknown option $1"
       exit 1
@@ -41,20 +46,18 @@ WEBSCRUBURL=$(sed 's![^/]$!&/!' <<< ${WEBSCRUBURL})
 echo "BINDIP     = ${BINDIP}"
 echo "CONFIGFILE = ${CONFIGFILE}"
 echo "WEBSCRUBURL = ${WEBSCRUBURL}"
-
-# exit 0
-
+[ ! -z ${FPROBEIP} ] && echo "FPROBEIP = ${FPROBEIP}"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 echo $SCRIPT_DIR
 
 if [ "$(id -u)" != "0" ]; then
-   echo "Este script debés ejecutarlo como root, gato" 1>&2
+   echo "Este script debe ser ejecutado como usuario root" 1>&2
    exit 1
 fi
 
-echo "Script para simplificarnos la vida, chabón."
+echo "Script para simplificarnos la vida."
 
 [[ ! -d /opt/exabgp/ ]] && echo "Se necesita exabgp en /opt/exabgp/ " && exit 1
 
@@ -71,6 +74,12 @@ echo ${WEBSCRUBURL} > "/etc/webscrub.txt"
 echo "Habilitando forwarding IPv4."
 
 sysctl -w net.ipv4.ip_forward=1
+
+if [ ! -z ${FPROBEIP} ];
+then
+  echo "Ejecutando fprobe"
+  /usr/sbin/fprobe -i eth0 ${FPROBEIP}
+fi
 
 echo "Ejecutando ExaBGP"
 
