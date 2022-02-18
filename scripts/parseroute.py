@@ -158,58 +158,61 @@ def get_tunnels():
 rutas_aplicadas = set()
 
 while True:
+    try:
+        line = stdin.readline().strip()
 
-    line = stdin.readline().strip()
+        # When the parent dies we are seeing continual newlines, so we only access so many before       #stopping
+        if line == "":
+            counter += 1
+            if counter > 100:
+                break
+            continue
+        counter = 0
 
-    # When the parent dies we are seeing continual newlines, so we only access so many before       #stopping
-    if line == "":
-        counter += 1
-        if counter > 100:
-            break
-        continue
-    counter = 0
+        message = json.loads(line)
 
-    message = json.loads(line)
+        if message["type"] == "state":
+            if message['neighbor']['state'] in ["down", "connected"]:
+                logger.warning(f"Peer {message['neighbor']['state']}. Limpiando rutas")
+                send_cmd('clear adj-rib')
+                tuneles = get_tunnels()
+                logger.info(f'Eliminando tuneles: {tuneles}')
+                for tun in tuneles:
+                    logger.info(f'Eliminando tunel {tun}')
+                    remove_gre(tun, force=True)
 
-    if message["type"] == "state":
-        if message['neighbor']['state'] in ["down", "connected"]:
-            logger.warning(f"Peer {message['neighbor']['state']}. Limpiando rutas")
-            send_cmd('clear adj-rib')
-            tuneles = get_tunnels()
-            logger.info(f'Eliminando tuneles: {tuneles}')
-            for tun in tuneles:
-                logger.info(f'Eliminando tunel {tun}')
-                remove_gre(tun, force=True)
+        elif message["type"] == "update":
+            try:
+                neighbor = message['neighbor']
+                update = neighbor['message']['update']
+                if 'announce' in update.keys():
+                    peer = neighbor['address']['peer']
+                    local = neighbor["address"]["local"]
+                    array  = update['announce']['ipv4 unicast'][peer]
+                    net = array[0]['nlri']
+                    message_type = "announce"
+                    action = "add"
+                    asn_remote = update['attribute']['as-path'][0]
+                    create_or_up_gre(local, asn_remote)
+                    value = f"announce route {net} next-hop self origin igp as-path [{asn_remote}]"
+                    aplicar_ruta(value, action, net, asn_remote)
+                elif 'withdraw' in update.keys():
+                    array  = update['withdraw']['ipv4 unicast']
+                    net = array[0]['nlri']
+                    action = "del"
+                    message_type = "withdraw"
+                    asn_remote = extraer_asn_de_ruta(net)
+                    value = f"withdraw route {net}"
+                    aplicar_ruta(value, action, net, asn_remote)
+                    if asn_remote:
+                        down_gre(asn_remote)
+                    # remove_orphan_gre()
 
-    elif message["type"] == "update":
-        try:
-            neighbor = message['neighbor']
-            update = neighbor['message']['update']
-            if 'announce' in update.keys():
-                peer = neighbor['address']['peer']
-                local = neighbor["address"]["local"]
-                array  = update['announce']['ipv4 unicast'][peer]
-                net = array[0]['nlri']
-                message_type = "announce"
-                action = "add"
-                asn_remote = update['attribute']['as-path'][0]
-                create_or_up_gre(local, asn_remote)
-                value = f"announce route {net} next-hop self origin igp as-path [{asn_remote}]"
-                aplicar_ruta(value, action, net, asn_remote)
-            elif 'withdraw' in update.keys():
-                array  = update['withdraw']['ipv4 unicast']
-                net = array[0]['nlri']
-                action = "del"
-                message_type = "withdraw"
-                asn_remote = extraer_asn_de_ruta(net)
-                value = f"withdraw route {net}"
-                aplicar_ruta(value, action, net, asn_remote)
-                if asn_remote:
-                    down_gre(asn_remote)
-                # remove_orphan_gre()
+                
 
-            
+            except KeyError as detail:
+                pass
+    except Exception as e:
+        logger.exception('Exception in main loop')
 
-        except KeyError as detail:
-            pass
 
