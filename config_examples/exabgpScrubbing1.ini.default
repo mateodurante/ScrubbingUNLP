@@ -52,7 +52,7 @@ template {
 
 
 # ExaBGP peering to Central ExaBGP
-neighbor 163.20.252.2 {
+neighbor 163.10.252.2 {
   inherit scrubbing;
   peer-as 5692;
   router-id <IP-Scrubbing1>;
