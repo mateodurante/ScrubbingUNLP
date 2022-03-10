@@ -94,7 +94,7 @@ cmds = [
     'ip -o link ls',
     'ip -o tun ls',
     'ip -o route ls',
-    'iptables -nL -v',
+    'iptables -nvxL',
 ]
 
 while True:

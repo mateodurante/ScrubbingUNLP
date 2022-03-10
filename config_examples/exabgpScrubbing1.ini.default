@@ -1,5 +1,4 @@
 process receive-routes-central {
-  run /usr/bin/python3 /opt/exabgp/scripts/syslog.py;
   run /usr/bin/python3 /opt/exabgp/scripts/acl.py;
   encoder json;
 }
@@ -12,6 +11,18 @@ process parse-routes-central {
 process httpAPI {
    run /usr/bin/python3 /opt/exabgp/scripts/http_api.py;
    encoder json;
+}
+
+# Changes on the neighbor states
+process processNeighborChanges {
+  run /usr/bin/python3 /opt/exabgp/scripts/webscrubmessages.py;
+  encoder json;
+}
+
+# Status of the scrubbing center node
+process processNodeStatus {
+  run /usr/bin/python3 /opt/exabgp/scripts/webscrubstatus.py;
+  encoder json;
 }
 
 # IPv4 template
@@ -52,9 +63,9 @@ template {
 
 
 # ExaBGP peering to Central ExaBGP
-neighbor 163.10.252.2 {
+neighbor <IP-Central> {
   inherit scrubbing;
-  peer-as 5692;
+  peer-as <ASN-Central>;
   router-id <IP-Scrubbing1>;
   local-address <IP-Scrubbing1>;
   description "ExaBGP to ExaBGPCentral";
@@ -71,13 +82,28 @@ neighbor 163.10.252.2 {
     receive {
       parsed;
       update;
-      keepalive;
       operational;
       packets;
       open; 
       consolidate;
       refresh;
     }
+  }
+  api {
+    processes [ processNeighborChanges ];
+    neighbor-changes;
+    receive {
+      parsed;
+      update;
+      operational;
+      packets;
+      open;
+      consolidate;
+      refresh;
+    }
+  }
+  api {
+    processes [ processNodeStatus ];
   }
 }
 

@@ -1,5 +1,4 @@
 process receive-routes-central {
-  run /usr/bin/python3 /opt/exabgp/scripts/syslog.py;
   run /usr/bin/python3 /opt/exabgp/scripts/acl.py;
   encoder json;
 }
@@ -12,6 +11,18 @@ process parse-routes-central {
 process httpAPI {
    run /usr/bin/python3 /opt/exabgp/scripts/http_api.py;
    encoder json;
+}
+
+# Changes on the neighbor states
+process processNeighborChanges {
+  run /usr/bin/python3 /opt/exabgp/scripts/webscrubmessages.py;
+  encoder json;
+}
+
+# Status of the scrubbing center node
+process processNodeStatus {
+  run /usr/bin/python3 /opt/exabgp/scripts/webscrubstatus.py;
+  encoder json;
 }
 
 # IPv4 template
@@ -27,7 +38,7 @@ template {
       ipv4 unicast;
       ipv4 flow;
     }
-  } 
+  }
 }
 
 template {
@@ -71,13 +82,28 @@ neighbor <IP-Central> {
     receive {
       parsed;
       update;
-      keepalive;
+      operational;
+      packets;
+      open; 
+      consolidate;
+      refresh;
+    }
+  }
+  api {
+    processes [ processNeighborChanges ];
+    neighbor-changes;
+    receive {
+      parsed;
+      update;
       operational;
       packets;
       open;
       consolidate;
       refresh;
     }
+  }
+  api {
+    processes [ processNodeStatus ];
   }
 }
 

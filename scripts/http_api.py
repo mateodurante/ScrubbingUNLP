@@ -3,12 +3,15 @@ from sys import stdout
 import logging
 import socket
 import subprocess
+import os
+
+# Disable printing to stdout
+os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 hostname = socket.gethostname()
 
 logging.basicConfig(filename=f'/var/log/http_api_{hostname}.log', level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 app = Flask(__name__)
 

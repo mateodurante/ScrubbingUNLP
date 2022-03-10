@@ -6,28 +6,28 @@ process httpAPI {
 
 # Changes on the neighbor states
 process processNeighborChanges {
-   run /usr/bin/python3 /opt/exabgp/scripts/webscrubstates.py;
+   run /usr/bin/python3 /opt/exabgp/scripts/webscrubmessages.py;
    encoder json;
 }
 
 # IPv4 template
 template {
   neighbor central {
-	local-as <ASN>;
-	hold-time 180;
-	group-updates false;
+    local-as <ASN-Central>;
+    hold-time 180;
+    group-updates false;
 
-	capability {
-		graceful-restart 120;
-	}
-	family {
-		ipv4 unicast;
-		ipv4 flow;
-	}
-	api {
-		processes [ httpAPI ];
-		neighbor-changes;
-  	}
+    capability {
+      graceful-restart 120;
+    }
+    family {
+      ipv4 unicast;
+      ipv4 flow;
+    }
+    api {
+      processes [ httpAPI ];
+      neighbor-changes;
+    }
     api {
       processes [ processNeighborChanges ];
       neighbor-changes;

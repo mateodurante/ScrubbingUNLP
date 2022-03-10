@@ -8,7 +8,7 @@ if [[ -d /opt/exabgp/ ]]; then
 fi
 
 echo "Descargando ExaBGP en /opt/exabgp"
-sudo git clone https://github.com/Exa-Networks/exabgp /opt/exabgp/
+sudo git clone https://github.com/Exa-Networks/exabgp /opt/exabgp/ || { echo 'No se pudo clonar el repositorio' ; exit 1; }
 cd /opt/exabgp/
 sudo git checkout 4.2.11
 
